@@ -7,7 +7,7 @@
 # for i, (line1, line2) in enumerate(zip(line1, line2)):
 #     if line1 != line2:
 #         print(f"string {i+1}: {line1.strip()} (from first file) does not match {line2.strip()} (from second file)")
-
+print("hi")
 
 # Task 2
 # with open(file='file1.txt', mode='r', encoding='utf-8') as file1, \

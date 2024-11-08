@@ -16,7 +16,7 @@
 # result = double_until_100(1)
 # print(result)
 print("hi")
-
+print("hi")
 #Task 2
 # def make_counter(n):
 #     def counter():

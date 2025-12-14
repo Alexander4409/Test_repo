@@ -1,0 +1,169 @@
+#include <bits/stdc++.h>
+using namespace std;
+
+int main(){
+    ios::sync_with_stdio(false);
+    cin.tie(nullptr);
+
+    int N, M;
+    cin >> N >> M;
+
+    vector<pair<int,int>> edges(M);
+    vector<vector<pair<int,int>>> adj(N);
+
+    for(int i = 0; i < M; ++i){
+        int u,v;
+        cin >> u >> v;
+        edges[i] = {u,v};
+        adj[u].push_back({v,i});
+        adj[v].push_back({u,i});
+    }
+
+    // ---------- BFS-остов ----------
+    vector<int> parent(N, -1), parent_edge(N, -1), depth(N, 0);
+    queue<int> q;
+    q.push(0);
+    parent[0] = 0;
+
+    while(!q.empty()){
+        int v = q.front(); q.pop();
+        for(auto [to, ei] : adj[v]){
+            if(parent[to] == -1){
+                parent[to] = v;
+                parent_edge[to] = ei;
+                depth[to] = depth[v] + 1;
+                q.push(to);
+            }
+        }
+    }
+
+    unordered_set<int> tree_edges;
+    for(int i = 1; i < N; ++i)
+        tree_edges.insert(parent_edge[i]);
+
+    auto score = [&](const vector<int>& d){
+        long long s = 0;
+        for(int x : d) s += x;
+        return s;
+    };
+
+    long long best_score = score(depth);
+
+    // ---------- построение adj дерева ----------
+    auto build_tree_adj = [&](const unordered_set<int>& te){
+        vector<vector<int>> t(N);
+        for(int ei : te){
+            auto [u,v] = edges[ei];
+            t[u].push_back(v);
+            t[v].push_back(u);
+        }
+        return t;
+    };
+
+    vector<vector<int>> tree_adj = build_tree_adj(tree_edges);
+
+    // ---------- пересчёт глубин ----------
+    auto recompute_depth = [&](const vector<vector<int>>& t){
+        vector<int> d(N, -1);
+        queue<int> qq;
+        qq.push(0);
+        d[0] = 0;
+        while(!qq.empty()){
+            int v = qq.front(); qq.pop();
+            for(int to : t[v]){
+                if(d[to] == -1){
+                    d[to] = d[v] + 1;
+                    qq.push(to);
+                }
+            }
+        }
+        return d;
+    };
+
+    vector<int> non_tree_edges;
+    for(int i = 0; i < M; ++i)
+        if(!tree_edges.count(i))
+            non_tree_edges.push_back(i);
+
+    // ---------- локальная оптимизация ----------
+    const int MAX_ITERS = 3000;
+    for(int it = 0; it < MAX_ITERS; ++it){
+        bool improved = false;
+
+        for(int ei : non_tree_edges){
+            auto [u,v] = edges[ei];
+
+            // путь u -> v
+            vector<int> prev(N, -1);
+            queue<int> qq;
+            qq.push(u);
+            prev[u] = u;
+
+            while(!qq.empty()){
+                int x = qq.front(); qq.pop();
+                if(x == v) break;
+                for(int y : tree_adj[x]){
+                    if(prev[y] == -1){
+                        prev[y] = x;
+                        qq.push(y);
+                    }
+                }
+            }
+            if(prev[v] == -1) continue;
+
+            // восстановление пути
+            vector<pair<int,int>> path;
+            for(int x = v; x != u; x = prev[x])
+                path.push_back({x, prev[x]});
+
+            for(auto [a,b] : path){
+                int rem_edge = -1;
+                for(auto [to, idx] : adj[a]){
+                    if(to == b && tree_edges.count(idx)){
+                        rem_edge = idx;
+                        break;
+                    }
+                }
+                if(rem_edge == -1) continue;
+
+                unordered_set<int> new_tree = tree_edges;
+                new_tree.erase(rem_edge);
+                new_tree.insert(ei);
+
+                auto new_adj = build_tree_adj(new_tree);
+                auto new_depth = recompute_depth(new_adj);
+                if(find(new_depth.begin(), new_depth.end(), -1) != new_depth.end())
+                    continue;
+
+                long long sc = score(new_depth);
+                if(sc > best_score){
+                    best_score = sc;
+                    tree_edges = move(new_tree);
+                    tree_adj = move(new_adj);
+                    depth = move(new_depth);
+                    improved = true;
+                    break;
+                }
+            }
+            if(improved) break;
+        }
+        if(!improved) break;
+    }
+
+    // ---------- вывод ----------
+    vector<int> removed;
+    for(int i = 0; i < M; ++i)
+        if(!tree_edges.count(i))
+            removed.push_back(i);
+
+    cout << removed.size() << "\n";
+    if(!removed.empty()){
+        for(int i = 0; i < (int)removed.size(); ++i){
+            if(i) cout << ' ';
+            cout << removed[i];
+        }
+        cout << "\n";
+    }
+
+    return 0;
+}
